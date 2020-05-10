@@ -67,16 +67,39 @@ data class Pellet(
 }
 
 class Solver {
+
+    var current: Pellet? = null
+
     fun nextMove(pacId: Int, x: Int, y: Int, pellets: List<Pellet>): String {
 
-        val next = pellets.asSequence().sortedBy { it.dist(x, y)}.firstOrNull()
+        if (current == null) {
+            return newTarget(pellets, x, y, pacId)
+        } else {
+            val nexttarget = pellets.asSequence().firstOrNull { it == current }
+            if (nexttarget != null) {
+                return doMove(pacId, nexttarget)
+            } else {
+                return newTarget(pellets, x, y, pacId)
+            }
+        }
+    }
+
+    private fun newTarget(
+        pellets: List<Pellet>,
+        x: Int,
+        y: Int,
+        pacId: Int
+    ): String {
+        val next = pellets.asSequence().sortedBy { it.dist(x, y) }.firstOrNull()
 
         if (next == null) {
             return "MOVE $pacId 0 0"
         } else {
-            return "MOVE $pacId ${next.x} ${next.y}"
+            return doMove(pacId, next)
         }
 
-        TODO()
+        current = next
     }
+
+    private fun doMove(pacId: Int, next: Pellet) = "MOVE $pacId ${next.x} ${next.y}"
 }
