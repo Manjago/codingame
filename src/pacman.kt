@@ -21,9 +21,7 @@ fun main(args: Array<String>) {
         val opponentScore = input.nextInt()
         val visiblePacCount = input.nextInt() // all your pacs and enemy pacs in sight
 
-        var myPacId: Int = 0
-        var myX: Int = 0
-        var myY: Int = 0
+        val myPacmans = mutableListOf<Pacman>()
 
         for (i in 0 until visiblePacCount) {
             val pacId = input.nextInt() // pac number (unique within a team)
@@ -34,13 +32,11 @@ fun main(args: Array<String>) {
             val speedTurnsLeft = input.nextInt() // unused in wood leagues
             val abilityCooldown = input.nextInt() // unused in wood leagues
             if (mine) {
-                myPacId = pacId
-                myX = x
-                myY = y
+                myPacmans.add(Pacman(pacId, x, y))
             }
         }
         val visiblePelletCount = input.nextInt() // all pellets in sight
-        val myPellets = mutableListOf<Pellet>()
+        val myPellets = mutableSetOf<Pellet>()
         for (i in 0 until visiblePelletCount) {
             val x = input.nextInt()
             val y = input.nextInt()
@@ -51,64 +47,71 @@ fun main(args: Array<String>) {
         // Write an action using println()
         // To debug: System.err.println("Debug messages...");
 
-        val move = solver.nextMove(myPacId, myX, myX, myPellets)
+        val move = solver.nextMove(myPacmans, myPellets)
         println(move)
         //println("MOVE 0 15 10") // MOVE <pacId> <x> <y>
     }
 
 }
 
-data class Pellet(
-    val x: Int,
-    val y: Int,
-    val value: Int
-) {
+data class Pellet(val x: Int, val y: Int, val value: Int) {
     fun dist(i: Int, j: Int) = (i - x) * (i - x) + (j - y) * (j - y)
     override fun toString(): String {
         return "(x=$x, y=$y, v=$value)"
     }
 }
 
-class Solver {
+data class Pacman(val id: Int, val x: Int, val y: Int)
 
-    var current: Pellet? = null
-
-    fun nextMove(pacId: Int, x: Int, y: Int, pellets: List<Pellet>): String {
-
-        if (current == null) {
-            return newTarget(pellets, x, y, pacId)
-        } else {
-            val nexttarget = pellets.asSequence().firstOrNull { it == current }
-            if (nexttarget != null) {
-                System.err.println("to saved $nexttarget")
-                return doMove(pacId, nexttarget)
-            } else {
-                return newTarget(pellets, x, y, pacId)
-            }
-        }
+data class Move(val pacId: Int, val x: Int, val y: Int) {
+    override fun toString(): String {
+        return "MOVE $pacId $x $y"
     }
 
-    private fun newTarget(
-        pellets: List<Pellet>,
-        x: Int,
-        y: Int,
-        pacId: Int
-    ): String {
+    companion object {
+        fun defaultMove(pacId: Int) = Move(pacId, 0, 0)
+    }
+}
 
+class Solver {
+
+    private val currentTargets: MutableMap<Int, Pellet> = mutableMapOf()
+
+    fun nextMove(pacmans: List<Pacman>, pellets: Set<Pellet>): String {
+
+        val moves = mutableListOf<Move>()
+
+        pacmans.forEach { pacman ->
+
+            val currentTarget = currentTargets[pacman.id]
+            if (currentTarget == null || !pellets.contains(currentTarget)) {
+
+                currentTargets.remove(pacman.id)
+
+                val target: Pellet? = newTarget(pellets, pacman)
+                if (target != null) {
+                    currentTargets[pacman.id] = target
+                    moves.add(Move(pacman.id, target.x, target.y))
+                } else {
+                    moves.add(Move.defaultMove(pacman.id))
+                }
+            } else {
+                moves.add(Move(pacman.id, currentTarget.x, currentTarget.y))
+            }
+        }
+
+        return moves.joinToString("|") { it.toString() }
+    }
+
+    private fun newTarget(pellets: Set<Pellet>, pacman: Pacman): Pellet? {
         val next10 = pellets.asSequence()
             .filter { it.value > 2 }
-            .sortedBy { it.dist(x, y) }.firstOrNull()
+            .sortedBy { it.dist(pacman.x, pacman.y) }
+            .firstOrNull()
 
-        val next = next10 ?: pellets.asSequence().sortedBy { it.dist(x, y) }.firstOrNull()
-
-        if (next == null) {
-            System.err.println("0 0")
-            return "MOVE $pacId 0 0"
-        } else {
-            current = next
-            System.err.println("to new $next")
-            return doMove(pacId, next)
-        }
+        return next10 ?: pellets.asSequence()
+            .sortedBy { it.dist(pacman.x, pacman.y) }
+            .firstOrNull()
 
     }
 
