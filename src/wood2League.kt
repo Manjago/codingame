@@ -64,6 +64,9 @@ data class Pellet(
     val value: Int
 ) {
     fun dist(i: Int, j: Int) = (i - x) * (i - x) + (j - y) * (j - y)
+    override fun toString(): String {
+        return "(x=$x, y=$y, v=$value)"
+    }
 }
 
 class Solver {
@@ -91,7 +94,12 @@ class Solver {
         y: Int,
         pacId: Int
     ): String {
-        val next = pellets.asSequence().sortedBy { it.dist(x, y) }.firstOrNull()
+
+        val next10 = pellets.asSequence()
+            .filter { it.value > 2 }
+            .sortedBy { it.dist(x, y) }.firstOrNull()
+
+        val next = next10 ?: pellets.asSequence().sortedBy { it.dist(x, y) }.firstOrNull()
 
         if (next == null) {
             System.err.println("0 0")
