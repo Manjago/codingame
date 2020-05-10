@@ -77,6 +77,7 @@ class Solver {
         } else {
             val nexttarget = pellets.asSequence().firstOrNull { it == current }
             if (nexttarget != null) {
+                System.err.println("to saved $nexttarget")
                 return doMove(pacId, nexttarget)
             } else {
                 return newTarget(pellets, x, y, pacId)
@@ -93,12 +94,14 @@ class Solver {
         val next = pellets.asSequence().sortedBy { it.dist(x, y) }.firstOrNull()
 
         if (next == null) {
+            System.err.println("0 0")
             return "MOVE $pacId 0 0"
         } else {
+            current = next
+            System.err.println("to new $next")
             return doMove(pacId, next)
         }
 
-        current = next
     }
 
     private fun doMove(pacId: Int, next: Pellet) = "MOVE $pacId ${next.x} ${next.y}"
