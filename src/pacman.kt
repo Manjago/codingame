@@ -198,7 +198,6 @@ class Solver(private val width: Int, private val height: Int) {
 
         override fun nextMove(pacman: Pacman): Turn? {
 
-            System.err.println("ks " + hisPacmans.size)
             val enemy = hisPacmans.asSequence()
                 .filter {
                     limit == null || it.dist(pacman) < limit
@@ -269,9 +268,7 @@ class Solver(private val width: Int, private val height: Int) {
     private fun Pacman.isBlocked(): Boolean {
         val prev = prevMyPacmans.asSequence().firstOrNull { it.id == this.id } ?: return false
 
-        val blocked = prev.x == this.x && prev.y == this.y
-        System.err.println("${this.id} $blocked")
-        return blocked
+        return prev.x == x && prev.y == y
     }
 
     private fun Pacman.nearEnemy(limit: Int): Boolean {
