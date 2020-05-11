@@ -104,12 +104,17 @@ class Solver {
     }
 
     private fun newTarget(pellets: Set<Pellet>, pacman: Pacman): Pellet? {
+
+        val acquiredTargets = currentTargets.values.toSet()
+
         val next10 = pellets.asSequence()
             .filter { it.value > 2 }
+            .filter { !acquiredTargets.contains(it) }
             .sortedBy { it.dist(pacman.x, pacman.y) }
             .firstOrNull()
 
         return next10 ?: pellets.asSequence()
+            .filter { !acquiredTargets.contains(it) }
             .sortedBy { it.dist(pacman.x, pacman.y) }
             .firstOrNull()
 
