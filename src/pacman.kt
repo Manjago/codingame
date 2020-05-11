@@ -1,4 +1,4 @@
-//ver 2.2 improved dummy by histry
+//ver 2.1
 import java.util.*
 import kotlin.math.abs
 
@@ -186,24 +186,15 @@ class Solver(private val width: Int, private val height: Int) {
         override fun isDummy() = ttl < 0
         override fun nextMove(pacman: Pacman): Move? {
             ttl--
-            if (saved == null) {
-                saved = moveFromHistry(pacman) ?: randomMove(pacman)
+            return if (saved != null) {
+                saved
+            } else {
+                saved = randomMove(pacman)
+                randomMove(pacman)
             }
-            return saved
         }
     }
 
-    private fun moveFromHistry(pacman: Pacman): Move? {
-        pelletsHistry.data.asReversed().forEach{hp ->
-            val pretender = hp.asSequence()
-                .sortedByDescending {  pacman.dist(it) }
-                .firstOrNull()
-            if (pretender != null) {
-                return@moveFromHistry Move(pacman, pretender)
-            }
-        }
-        return null
-    }
 
     inner class HarvesterStrategy : Strategy {
         override fun name() = "harv"
@@ -261,8 +252,6 @@ class Solver(private val width: Int, private val height: Int) {
         }
     }
 
-    private val pelletsHistry = LimitedDepot<Set<Pellet>>(10)
-
     fun nextMove(
         pacmans: List<Pacman>, pellets: Set<Pellet>, hisPacmans: List<Pacman>,
         turnNum: Int
@@ -273,7 +262,6 @@ class Solver(private val width: Int, private val height: Int) {
         this.myPacmans = pacmans
         this.hisPacmans = hisPacmans
         this.prevTurns = if (turnNum != 0) this.turns else mutableListOf()
-        pelletsHistry.push(pellets)
 
         removeDeads()
 
@@ -396,16 +384,6 @@ class Solver(private val width: Int, private val height: Int) {
                 kotlin.random.Random.nextInt(height)
             )
         )
-    }
-
-    class LimitedDepot<T>(private val limit: Int) {
-        val data = mutableListOf<T>()
-        fun push(item: T) {
-            data.add(item)
-            if (data.size > limit) {
-                data.removeAt(0)
-            }
-        }
     }
 
     companion object {
