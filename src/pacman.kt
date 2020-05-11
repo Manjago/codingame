@@ -163,7 +163,7 @@ class Solver {
         override fun commit(turn: Turn): Turn {
             if (turn is Move) {
                 currentTargets.remove(turn.pacman.id)
-                currentTargets[turn.pacman.id] = turn.pacman
+                currentTargets[turn.pacman.id] = turn.item
             }
             return turn
         }
