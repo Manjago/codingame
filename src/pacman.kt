@@ -1,3 +1,4 @@
+//ver 2.0
 import java.util.*
 import kotlin.math.abs
 
@@ -69,7 +70,7 @@ fun main(args: Array<String>) {
 
 }
 
-abstract class Item(open val x: Int, open val y: Int) {
+open class Item(open val x: Int, open val y: Int) {
     fun dist(other: Item) = abs(other.x - x) + abs(other.y - y)
 }
 
@@ -91,6 +92,40 @@ interface Turn
 data class Move(val pacman: Pacman, val item: Item) : Turn {
     override fun toString(): String {
         return "MOVE ${pacman.id} ${item.x} ${item.y}"
+    }
+
+    fun anti(): Move {
+        return when {
+            pacman.x == item.x && pacman.y != item.y -> Move(
+                pacman, Item(
+                    pacman.x,
+                    pacman.y + sign(pacman.y - item.y)
+                )
+            )
+            pacman.x != item.x && pacman.y == item.y ->
+                Move(
+                    pacman, Item(
+                        pacman.y + sign(pacman.x - item.x),
+                        pacman.y
+                    )
+                )
+            pacman.x != item.x && pacman.y != item.y ->
+                Move(
+                    pacman, Item(
+                        pacman.y + sign(pacman.x - item.x),
+                        pacman.y + sign(pacman.y - item.y)
+                    )
+                )
+            else -> this // magic
+        }
+    }
+}
+
+fun sign(i: Int): Int {
+    return when {
+        i < 0 -> -1
+        i > 0 -> 1
+        else -> 0
     }
 }
 
@@ -136,7 +171,7 @@ class Solver(private val width: Int, private val height: Int) {
     private lateinit var turns: MutableList<Turn>
     private lateinit var prevTurns: MutableList<Turn>
 
-    inner class InstantSpeedStrategy: Strategy {
+    inner class InstantSpeedStrategy : Strategy {
         override fun name() = "ispeed"
         override fun nextMove(pacman: Pacman): Turn? {
             return Speed(pacman)
@@ -151,11 +186,11 @@ class Solver(private val width: Int, private val height: Int) {
         override fun isDummy() = ttl < 0
         override fun nextMove(pacman: Pacman): Move? {
             ttl--
-            if (saved != null) {
-                return saved
+            return if (saved != null) {
+                saved
             } else {
                 saved = randomMove(pacman)
-                return randomMove(pacman)
+                randomMove(pacman)
             }
         }
     }
@@ -206,11 +241,13 @@ class Solver(private val width: Int, private val height: Int) {
                 .firstOrNull()
                 ?: return null
 
+            val dist = enemy.dist(pacman)
             return when {
                 enemy.pacmanType.winner() == pacman.pacmanType ->
                     Move(pacman, enemy)
                 pacman.abilityCoolDown != 0 -> null
-                else -> Switch(pacman, enemy.pacmanType.winner())
+                dist < 4 -> Switch(pacman, enemy.pacmanType.winner())
+                else -> Move(pacman, enemy).anti()
             }
         }
     }
@@ -341,15 +378,17 @@ class Solver(private val width: Int, private val height: Int) {
     }
 
     private fun randomMove(pacman: Pacman): Move {
-        return Move(pacman, object : Item(
-            kotlin.random.Random.nextInt(width),
-            kotlin.random.Random.nextInt(height)
-        ) {})
+        return Move(
+            pacman, Item(
+                kotlin.random.Random.nextInt(width),
+                kotlin.random.Random.nextInt(height)
+            )
+        )
     }
 
     companion object {
-        private val DIST_INSTANT_SPEED = 10
-        private val DIST_KILLING = 20
-        private val DUMMY_TTL = 10
+        private const val DIST_INSTANT_SPEED = 10
+        private const val DIST_KILLING = 20
+        private const val DUMMY_TTL = 10
     }
 }
