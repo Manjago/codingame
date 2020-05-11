@@ -100,6 +100,12 @@ data class Switch(val pacman: Pacman, val pacmanType: PacmanType) : Turn {
     }
 }
 
+data class Speed(val pacman: Pacman) : Turn {
+    override fun toString(): String {
+        return "SPEED ${pacman.id}"
+    }
+}
+
 interface Strategy {
     fun nextMove(pacman: Pacman): Turn?
     fun isDummy(): Boolean = false
@@ -129,6 +135,15 @@ class Solver(private val width: Int, private val height: Int) {
     private lateinit var hisPacmans: List<Pacman>
     private lateinit var turns: MutableList<Turn>
     private lateinit var prevTurns: MutableList<Turn>
+
+    inner class InstantSpeedStrategy: Strategy {
+        override fun name() = "ispeed"
+        override fun nextMove(pacman: Pacman): Turn? {
+            return Speed(pacman)
+        }
+
+        override fun isDummy() = true
+    }
 
     inner class DummyStrategy(private var ttl: Int) : Strategy {
         var saved: Move? = null
@@ -244,6 +259,10 @@ class Solver(private val width: Int, private val height: Int) {
 
             if (pacman.isBlocked()) {
                 currentStrategies[pacman.id] = DummyStrategy(10)
+            }
+
+            if (turnNum == 0) {
+                currentStrategies[pacman.id] = InstantSpeedStrategy()
             }
 
             val strategy = currentStrategies[pacman.id]
