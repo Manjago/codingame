@@ -1,4 +1,4 @@
-//ver 2.0
+//ver 2.1
 import java.util.*
 import kotlin.math.abs
 
@@ -246,7 +246,7 @@ class Solver(private val width: Int, private val height: Int) {
                 enemy.pacmanType.winner() == pacman.pacmanType ->
                     Move(pacman, enemy)
                 pacman.abilityCoolDown != 0 -> null
-                dist < 4 -> Switch(pacman, enemy.pacmanType.winner())
+                dist < 3 -> Switch(pacman, enemy.pacmanType.winner())
                 else -> Move(pacman, enemy).anti()
             }
         }
