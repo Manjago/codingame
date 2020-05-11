@@ -191,21 +191,6 @@ class Solver(private val width: Int, private val height: Int) {
             return turn
         }
 
-        private fun newTarget(pacman: Pacman): Pellet? {
-
-            val acquiredTargets = currentTargets.values.toSet()
-
-            val next10 = pellets.asSequence()
-                .filter { it.value > 2 }
-                .filter { !acquiredTargets.contains(it) }
-                .sortedBy { it.dist(pacman) }
-                .firstOrNull()
-
-            return next10 ?: pellets.asSequence()
-                .filter { !acquiredTargets.contains(it) }
-                .sortedBy { it.dist(pacman) }
-                .firstOrNull()
-        }
     }
 
     inner class KillerStrategy(val limit: Int?) : Strategy {
@@ -263,6 +248,13 @@ class Solver(private val width: Int, private val height: Int) {
 
             if (turnNum == 0 && !pacman.nearEnemy(DIST_INSTANT_SPEED)) {
                 currentStrategies[pacman.id] = InstantSpeedStrategy()
+            }
+
+            if (currentStrategies[pacman.id] is DummyStrategy) {
+                val test = newTarget(pacman)
+                if (test != null) {
+                    currentStrategies[pacman.id] = HarvesterStrategy()
+                }
             }
 
             val strategy = currentStrategies[pacman.id]
@@ -330,6 +322,22 @@ class Solver(private val width: Int, private val height: Int) {
         currentStrategies.entries.removeAll { (k, v) ->
             !alivePacmans.contains(k)
         }
+    }
+
+    private fun newTarget(pacman: Pacman): Pellet? {
+
+        val acquiredTargets = currentTargets.values.toSet()
+
+        val next10 = pellets.asSequence()
+            .filter { it.value > 2 }
+            .filter { !acquiredTargets.contains(it) }
+            .sortedBy { it.dist(pacman) }
+            .firstOrNull()
+
+        return next10 ?: pellets.asSequence()
+            .filter { !acquiredTargets.contains(it) }
+            .sortedBy { it.dist(pacman) }
+            .firstOrNull()
     }
 
     private fun randomMove(pacman: Pacman): Move {
