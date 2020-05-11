@@ -252,16 +252,16 @@ class Solver(private val width: Int, private val height: Int) {
                 currentStrategies.remove(pacman.id)
             }
 
-            val limitEnemy = 20
+            val limitEnemy = DIST_KILLING
             if (hisPacmans.isNotEmpty() && pacman.nearEnemy(limitEnemy)) {
                 currentStrategies[pacman.id] = KillerStrategy(limitEnemy)
             }
 
             if (pacman.isBlocked()) {
-                currentStrategies[pacman.id] = DummyStrategy(10)
+                currentStrategies[pacman.id] = DummyStrategy(DUMMY_TTL)
             }
 
-            if (turnNum == 0) {
+            if (turnNum == 0 && !pacman.nearEnemy(DIST_INSTANT_SPEED)) {
                 currentStrategies[pacman.id] = InstantSpeedStrategy()
             }
 
@@ -318,7 +318,7 @@ class Solver(private val width: Int, private val height: Int) {
             return pretender2 to move2
         }
 
-        val pretender3 = DummyStrategy(10)
+        val pretender3 = DummyStrategy(DUMMY_TTL)
         return pretender3 to pretender3.nextMove(pacman)!!
     }
 
@@ -337,5 +337,11 @@ class Solver(private val width: Int, private val height: Int) {
             kotlin.random.Random.nextInt(width),
             kotlin.random.Random.nextInt(height)
         ) {})
+    }
+
+    companion object {
+        private val DIST_INSTANT_SPEED = 10
+        private val DIST_KILLING = 20
+        private val DUMMY_TTL = 10
     }
 }
