@@ -239,8 +239,12 @@ class Solver(private val width: Int, private val height: Int) {
             }
 
             val limitEnemy = 20
-            if (hisPacmans.isNotEmpty() && (pacman.isBlocked() || pacman.nearEnemy(limitEnemy))) {
+            if (hisPacmans.isNotEmpty() && pacman.nearEnemy(limitEnemy)) {
                 currentStrategies[pacman.id] = KillerStrategy(limitEnemy)
+            }
+
+            if (pacman.isBlocked()) {
+                currentStrategies[pacman.id] = DummyStrategy(10)
             }
 
             val strategy = currentStrategies[pacman.id]
@@ -265,7 +269,9 @@ class Solver(private val width: Int, private val height: Int) {
     private fun Pacman.isBlocked(): Boolean {
         val prev = prevMyPacmans.asSequence().firstOrNull { it.id == this.id } ?: return false
 
-        return prev.x == this.x && prev.y == this.y
+        val blocked = prev.x == this.x && prev.y == this.y
+        System.err.println("${this.id} $blocked")
+        return blocked
     }
 
     private fun Pacman.nearEnemy(limit: Int): Boolean {
