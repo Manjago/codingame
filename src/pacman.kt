@@ -35,9 +35,19 @@ fun main(args: Array<String>) {
             val speedTurnsLeft = input.nextInt() // unused in wood leagues
             val abilityCooldown = input.nextInt() // unused in wood leagues
             if (mine) {
-                myPacmans.add(Pacman(pacId, x, y, PacmanType.valueOf(typeId)))
+                myPacmans.add(
+                    Pacman(
+                        pacId, x, y, PacmanType.valueOf(typeId),
+                        speedTurnsLeft, abilityCooldown
+                    )
+                )
             } else {
-                hisPacmans.add(Pacman(pacId, x, y, PacmanType.valueOf(typeId)))
+                hisPacmans.add(
+                    Pacman(
+                        pacId, x, y, PacmanType.valueOf(typeId),
+                        speedTurnsLeft, abilityCooldown
+                    )
+                )
             }
         }
         val visiblePelletCount = input.nextInt() // all pellets in sight
@@ -71,20 +81,30 @@ data class Pellet(override val x: Int, override val y: Int, val value: Int) : It
 
 data class Pacman(
     val id: Int, override val x: Int, override val y: Int,
-    val pacmanType: PacmanType
+    val pacmanType: PacmanType,
+    val speedTurnsLeft: Int,
+    val abilityCoolDown: Int
 ) : Item(x, y)
 
-data class Move(val pacman: Pacman, val item: Item) {
+interface Turn
+
+data class Move(val pacman: Pacman, val item: Item) : Turn {
     override fun toString(): String {
         return "MOVE ${pacman.id} ${item.x} ${item.y}"
     }
 }
 
+data class Switch(val pacman: Pacman, val pacmanType: PacmanType) : Turn {
+    override fun toString(): String {
+        return "SWITCH ${pacman.id} $pacmanType"
+    }
+}
+
 interface Strategy {
-    fun nextMove(pacman: Pacman): Move?
+    fun nextMove(pacman: Pacman): Turn?
     fun isDummy(): Boolean = false
     fun name(): String
-    fun commit(move: Move): Move = move
+    fun commit(turn: Turn): Turn = turn
 }
 
 
@@ -97,7 +117,15 @@ class DummyStrategy : Strategy {
 }
 
 enum class PacmanType {
-    ROCK, PAPER, SCISSORS
+    ROCK, PAPER, SCISSORS;
+
+    fun winner(): PacmanType {
+        return when (this) {
+            ROCK -> PAPER
+            PAPER -> SCISSORS
+            SCISSORS -> ROCK
+        }
+    }
 }
 
 class Solver {
@@ -108,11 +136,11 @@ class Solver {
     private lateinit var prevMyPacmans: List<Pacman>
     private lateinit var myPacmans: List<Pacman>
     private lateinit var hisPacmans: List<Pacman>
-    private lateinit var moves: MutableList<Move>
-    private lateinit var prevMoves: MutableList<Move>
+    private lateinit var turns: MutableList<Turn>
+    private lateinit var prevTurns: MutableList<Turn>
 
 
-    inner class HarvesterStrategy() : Strategy {
+    inner class HarvesterStrategy : Strategy {
         override fun name() = "harv"
 
         override fun nextMove(pacman: Pacman): Move? {
@@ -134,10 +162,12 @@ class Solver {
             }
         }
 
-        override fun commit(move: Move): Move {
-            currentTargets.remove(move.pacman.id)
-            currentTargets[move.pacman.id] = move.pacman
-            return move
+        override fun commit(turn: Turn): Turn {
+            if (turn is Move) {
+                currentTargets.remove(turn.pacman.id)
+                currentTargets[turn.pacman.id] = turn.pacman
+            }
+            return turn
         }
 
         private fun newTarget(pacman: Pacman): Pellet? {
@@ -157,7 +187,29 @@ class Solver {
         }
     }
 
-    inner class IdleStrategy() : Strategy {
+    inner class KillerStrategy : Strategy {
+        override fun name() = "killer"
+
+        override fun nextMove(pacman: Pacman): Turn? {
+
+            val enemy = hisPacmans.asSequence()
+                .filter {
+                    it.dist(pacman) < 10
+                }
+                .sortedBy { it.dist(pacman) }
+                .firstOrNull()
+                ?: return null
+
+            return when {
+                enemy.pacmanType.winner() == pacman.pacmanType ->
+                    Move(pacman, enemy)
+                pacman.abilityCoolDown != 0 -> null
+                else -> Switch(pacman, enemy.pacmanType.winner())
+            }
+        }
+    }
+
+    inner class IdleStrategy : Strategy {
 
         override fun name() = "idle"
 
@@ -168,10 +220,10 @@ class Solver {
                 .sortedBy { it.dist(pacman) }
                 .firstOrNull()
 
-            if (enemy != null) {
-                return Move(pacman, enemy)
+            return if (enemy != null) {
+                Move(pacman, enemy)
             } else {
-                return null
+                null
             }
         }
 
@@ -186,11 +238,11 @@ class Solver {
         this.prevMyPacmans = if (turnNum != 0) this.myPacmans else listOf()
         this.myPacmans = pacmans
         this.hisPacmans = hisPacmans
-        this.prevMoves = if (turnNum != 0) this.moves else mutableListOf()
+        this.prevTurns = if (turnNum != 0) this.turns else mutableListOf()
 
         removeDeads()
 
-        moves = mutableListOf()
+        turns = mutableListOf()
 
         pacmans.forEach { pacman ->
 
@@ -198,13 +250,18 @@ class Solver {
             if (prestrategy != null && prestrategy.isDummy()) {
                 currentStrategies.remove(pacman.id)
             }
+
+            if (pacman.isBlocked()) {
+                currentStrategies[pacman.id] = KillerStrategy()
+            }
+
             val strategy = currentStrategies[pacman.id]
 
             val move = strategy?.nextMove(pacman)
             if (move != null) {
                 log(strategy, move)
                 strategy.commit(move)
-                moves.add(move)
+                turns.add(move)
             } else {
                 val (actualStrategy, newmove) = newStrategyMove(pacman)
                 if (!actualStrategy.isDummy()) {
@@ -212,24 +269,23 @@ class Solver {
                 }
                 actualStrategy.commit(newmove)
                 log(actualStrategy, newmove)
-                moves.add(newmove)
+                turns.add(newmove)
             }
         }
 
-        return moves.joinToString(" | ") { it.toString() }
+        return turns.joinToString(" | ") { it.toString() }
     }
 
     private fun Pacman.isBlocked(): Boolean {
-        val prev = prevMyPacmans.asSequence().firstOrNull { it.id == this.id }
-        if (prev == null) {
-            return false
-        }
+        val prev = prevMyPacmans.asSequence().firstOrNull { it.id == this.id } ?: return false
 
         return prev.x == this.x && prev.y == this.y
     }
 
-    private fun log(strategy: Strategy, move: Move) {
-        System.err.println("$move ${strategy.name()}")
+    private fun log(strategy: Strategy, turn: Turn) {
+        if (turn is Move) {
+            System.err.println("$turn ${strategy.name()} ${turn.pacman.abilityCoolDown}")
+        }
     }
 
     private fun newStrategyMove(pacman: Pacman): Pair<Strategy, Move> {
