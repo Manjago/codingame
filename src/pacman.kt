@@ -1,4 +1,4 @@
-//ver 2.3.2 sorteddewc?
+//ver 2.3.3 sorted and first
 import java.util.*
 import kotlin.math.abs
 
@@ -206,10 +206,11 @@ class Solver(private val width: Int, private val height: Int) {
         var saved: Move? = null
         override fun name() = "pos"
         override fun isDummy() = false
+        private var first = true
         override fun nextMove(pacman: Pacman): Move? {
             if (saved == null) {
                 val item = possible.asSequence()
-                    .sortedByDescending { it.dist(pacman) }
+                    .sortedBy { it.dist(pacman) }
                     .firstOrNull()
                 if (item != null) {
                     saved = Move(pacman, item)
@@ -220,13 +221,14 @@ class Solver(private val width: Int, private val height: Int) {
 
             val smartSaved = saved
             if (smartSaved != null) {
-                if (smartSaved.item.dist(pacman) < 2) {
+                if (!first && (smartSaved.item.dist(pacman) < 2)) {
                     return null
                 } else {
                     return smartSaved
                 }
             }
 
+            first = false
             return saved
         }
     }
