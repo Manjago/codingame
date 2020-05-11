@@ -250,7 +250,7 @@ class Solver(private val width: Int, private val height: Int) {
                 currentStrategies[pacman.id] = InstantSpeedStrategy()
             }
 
-            if (currentStrategies[pacman.id] is DummyStrategy) {
+            if (!pacman.isBlocked() && (currentStrategies[pacman.id] is DummyStrategy)) {
                 val test = newTarget(pacman)
                 if (test != null) {
                     currentStrategies[pacman.id] = HarvesterStrategy()
