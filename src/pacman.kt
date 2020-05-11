@@ -1,4 +1,4 @@
-//ver 2.3.0 possible strategy
+//ver 2.3.1 agressive--
 import java.util.*
 import kotlin.math.abs
 
@@ -189,9 +189,9 @@ class Solver(private val width: Int, private val height: Int) {
         override fun isDummy() = true
     }
 
-    inner class DummyStrategy(private var ttl: Int) : Strategy {
+    inner class DummyStrategy(private var ttl: Int, private val debug: String) : Strategy {
         var saved: Move? = null
-        override fun name() = "dummy$ttl"
+        override fun name() = "${debug}dummy$ttl"
         override fun isDummy() = ttl < 0
         override fun nextMove(pacman: Pacman): Move? {
             ttl--
@@ -213,6 +213,8 @@ class Solver(private val width: Int, private val height: Int) {
                     .firstOrNull()
                 if (item != null) {
                     saved = Move(pacman, item)
+                } else {
+                    System.err.println("psize: ${possible.size}")
                 }
             }
 
@@ -316,7 +318,7 @@ class Solver(private val width: Int, private val height: Int) {
             }
 
             if (pacman.isBlocked()) {
-                currentStrategies[pacman.id] = DummyStrategy(DUMMY_TTL)
+                currentStrategies[pacman.id] = DummyStrategy(DUMMY_TTL, "b")
             }
 
             if (turnNum == 0 && !pacman.nearEnemy(DIST_INSTANT_SPEED)) {
@@ -381,19 +383,19 @@ class Solver(private val width: Int, private val height: Int) {
             return pretender1 to move1
         }
 
-        val pretender2 = KillerStrategy(null)
-        val move2 = pretender2.nextMove(pacman)
-        if (move2 != null) {
-            return pretender2 to move2
-        }
-
         val pretender3 = PossibleStrategy()
         val move3 = pretender3.nextMove(pacman)
         if (move3 != null) {
             return pretender3 to move3
         }
 
-        val pretender4 = DummyStrategy(DUMMY_TTL)
+        val pretender2 = KillerStrategy(null)
+        val move2 = pretender2.nextMove(pacman)
+        if (move2 != null) {
+            return pretender2 to move2
+        }
+
+        val pretender4 = DummyStrategy(DUMMY_TTL, "h")
         return pretender4 to pretender4.nextMove(pacman)!!
 
     }
