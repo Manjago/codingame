@@ -35,9 +35,9 @@ fun main(args: Array<String>) {
             val speedTurnsLeft = input.nextInt() // unused in wood leagues
             val abilityCooldown = input.nextInt() // unused in wood leagues
             if (mine) {
-                myPacmans.add(Pacman(pacId, x, y))
+                myPacmans.add(Pacman(pacId, x, y, PacmanType.valueOf(typeId)))
             } else {
-                hisPacmans.add(Pacman(pacId, x, y))
+                hisPacmans.add(Pacman(pacId, x, y, PacmanType.valueOf(typeId)))
             }
         }
         val visiblePelletCount = input.nextInt() // all pellets in sight
@@ -69,7 +69,10 @@ data class Pellet(override val x: Int, override val y: Int, val value: Int) : It
     }
 }
 
-data class Pacman(val id: Int, override val x: Int, override val y: Int) : Item(x, y)
+data class Pacman(
+    val id: Int, override val x: Int, override val y: Int,
+    val pacmanType: PacmanType
+) : Item(x, y)
 
 data class Move(val pacman: Pacman, val item: Item) {
     override fun toString(): String {
@@ -91,6 +94,10 @@ class DummyStrategy : Strategy {
     override fun nextMove(pacman: Pacman): Move? {
         return Move(pacman, pacman)
     }
+}
+
+enum class PacmanType {
+    ROCK, PAPER, SCISSORS
 }
 
 class Solver {
