@@ -1,4 +1,4 @@
-//ver 2.3.1 agressive--
+//ver 2.3.2 sorteddewc?
 import java.util.*
 import kotlin.math.abs
 
@@ -209,7 +209,7 @@ class Solver(private val width: Int, private val height: Int) {
         override fun nextMove(pacman: Pacman): Move? {
             if (saved == null) {
                 val item = possible.asSequence()
-                    .sortedBy { it.dist(pacman) }
+                    .sortedByDescending { it.dist(pacman) }
                     .firstOrNull()
                 if (item != null) {
                     saved = Move(pacman, item)
