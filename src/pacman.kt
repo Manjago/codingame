@@ -130,11 +130,18 @@ class Solver(private val width: Int, private val height: Int) {
     private lateinit var turns: MutableList<Turn>
     private lateinit var prevTurns: MutableList<Turn>
 
-    inner class DummyStrategy : Strategy {
+    inner class DummyStrategy(private var ttl: Int) : Strategy {
+        var saved: Move? = null
         override fun name() = "dummy"
-        override fun isDummy() = true
+        override fun isDummy() = ttl < 0
         override fun nextMove(pacman: Pacman): Move? {
-            return randomMove(pacman)
+            ttl--
+            if (saved != null) {
+                return saved
+            } else {
+                saved = randomMove(pacman)
+                return randomMove(pacman)
+            }
         }
     }
 
@@ -289,7 +296,7 @@ class Solver(private val width: Int, private val height: Int) {
             return pretender2 to move2
         }
 
-        val pretender3 = DummyStrategy()
+        val pretender3 = DummyStrategy(10)
         return pretender3 to pretender3.nextMove(pacman)!!
     }
 
