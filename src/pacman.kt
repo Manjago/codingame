@@ -16,6 +16,7 @@ fun main(args: Array<String>) {
         val row = input.nextLine() // one line of the grid: space " " is floor, pound "#" is wall
     }
 
+    var turnNum = 0
     // game loop
     while (true) {
         val myScore = input.nextInt()
@@ -51,7 +52,7 @@ fun main(args: Array<String>) {
         // Write an action using println()
         // To debug: System.err.println("Debug messages...");
 
-        val move = solver.nextMove(myPacmans, myPellets, hisPacmans)
+        val move = solver.nextMove(myPacmans, myPellets, hisPacmans, turnNum++)
         println(move)
         //println("MOVE 0 15 10") // MOVE <pacId> <x> <y>
     }
@@ -80,68 +81,9 @@ interface Strategy {
     fun nextMove(pacman: Pacman): Move?
     fun isDummy(): Boolean = false
     fun name(): String
+    fun commit(move: Move): Move = move
 }
 
-class HarvesterStrategy(
-    val currentTargets: MutableMap<Int, Pellet>,
-    val pellets: Set<Pellet>
-) : Strategy {
-    override fun name() = "harv"
-
-    override fun nextMove(pacman: Pacman): Move? {
-
-        val currentTarget = currentTargets[pacman.id]
-        return if (currentTarget == null || !pellets.contains(currentTarget)) {
-
-            currentTargets.remove(pacman.id)
-
-            val target: Pellet? = newTarget(pellets, pacman)
-            if (target != null) {
-                currentTargets[pacman.id] = target
-                Move(pacman, target)
-            } else {
-                null
-            }
-        } else {
-            Move(pacman, currentTarget)
-        }
-    }
-    private fun newTarget(pellets: Set<Pellet>, pacman: Pacman): Pellet? {
-
-        val acquiredTargets = currentTargets.values.toSet()
-
-        val next10 = pellets.asSequence()
-            .filter { it.value > 2 }
-            .filter { !acquiredTargets.contains(it) }
-            .sortedBy { it.dist(pacman) }
-            .firstOrNull()
-
-        return next10 ?: pellets.asSequence()
-            .filter { !acquiredTargets.contains(it) }
-            .sortedBy { it.dist(pacman) }
-            .firstOrNull()
-    }
-}
-
-class IdleStrategy(val hisPacmans: List<Pacman>) : Strategy {
-
-    override fun name() = "idle"
-
-    override fun isDummy() = true
-
-    override fun nextMove(pacman: Pacman): Move? {
-        val enemy = hisPacmans.asSequence()
-            .sortedBy { it.dist(pacman) }
-            .firstOrNull()
-
-        if (enemy != null) {
-            return Move(pacman, enemy)
-        } else {
-            return null
-        }
-    }
-
-}
 
 class DummyStrategy : Strategy {
     override fun name() = "dummy"
@@ -153,55 +95,144 @@ class DummyStrategy : Strategy {
 
 class Solver {
 
-    private val currentTargets: MutableMap<Int, Pellet> = mutableMapOf()
+    private val currentTargets: MutableMap<Int, Item> = mutableMapOf()
     private val currentStrategies: MutableMap<Int, Strategy> = mutableMapOf()
     private lateinit var pellets: Set<Pellet>
-    private lateinit var pacmans: List<Pacman>
+    private lateinit var prevMyPacmans: List<Pacman>
+    private lateinit var myPacmans: List<Pacman>
     private lateinit var hisPacmans: List<Pacman>
+    private lateinit var moves: MutableList<Move>
+    private lateinit var prevMoves: MutableList<Move>
 
-    fun nextMove(pacmans: List<Pacman>, pellets: Set<Pellet>, hisPacmans: List<Pacman>): String {
+
+    inner class HarvesterStrategy() : Strategy {
+        override fun name() = "harv"
+
+        override fun nextMove(pacman: Pacman): Move? {
+
+            val currentTarget = currentTargets[pacman.id]
+            return if (currentTarget == null || !pellets.contains(currentTarget)) {
+
+                currentTargets.remove(pacman.id)
+
+                val target: Pellet? = newTarget(pacman)
+                if (target != null) {
+                    currentTargets[pacman.id] = target
+                    Move(pacman, target)
+                } else {
+                    null
+                }
+            } else {
+                Move(pacman, currentTarget)
+            }
+        }
+
+        override fun commit(move: Move): Move {
+            currentTargets.remove(move.pacman.id)
+            currentTargets[move.pacman.id] = move.pacman
+            return move
+        }
+
+        private fun newTarget(pacman: Pacman): Pellet? {
+
+            val acquiredTargets = currentTargets.values.toSet()
+
+            val next10 = pellets.asSequence()
+                .filter { it.value > 2 }
+                .filter { !acquiredTargets.contains(it) }
+                .sortedBy { it.dist(pacman) }
+                .firstOrNull()
+
+            return next10 ?: pellets.asSequence()
+                .filter { !acquiredTargets.contains(it) }
+                .sortedBy { it.dist(pacman) }
+                .firstOrNull()
+        }
+    }
+
+    inner class IdleStrategy() : Strategy {
+
+        override fun name() = "idle"
+
+        override fun isDummy() = true
+
+        override fun nextMove(pacman: Pacman): Move? {
+            val enemy = hisPacmans.asSequence()
+                .sortedBy { it.dist(pacman) }
+                .firstOrNull()
+
+            if (enemy != null) {
+                return Move(pacman, enemy)
+            } else {
+                return null
+            }
+        }
+
+    }
+
+    fun nextMove(
+        pacmans: List<Pacman>, pellets: Set<Pellet>, hisPacmans: List<Pacman>,
+        turnNum: Int
+    ): String {
 
         this.pellets = pellets
-        this.pacmans = pacmans
+        this.prevMyPacmans = if (turnNum != 0) this.myPacmans else listOf()
+        this.myPacmans = pacmans
         this.hisPacmans = hisPacmans
+        this.prevMoves = if (turnNum != 0) this.moves else mutableListOf()
 
         removeDeads()
 
-        val moves = mutableListOf<Move>()
+        moves = mutableListOf()
 
         pacmans.forEach { pacman ->
 
+            val prestrategy = currentStrategies[pacman.id]
+            if (prestrategy != null && prestrategy.isDummy()) {
+                currentStrategies.remove(pacman.id)
+            }
             val strategy = currentStrategies[pacman.id]
 
             val move = strategy?.nextMove(pacman)
             if (move != null) {
                 log(strategy, move)
+                strategy.commit(move)
                 moves.add(move)
             } else {
                 val (actualStrategy, newmove) = newStrategyMove(pacman)
                 if (!actualStrategy.isDummy()) {
                     currentStrategies[pacman.id] = actualStrategy
                 }
+                actualStrategy.commit(newmove)
                 log(actualStrategy, newmove)
                 moves.add(newmove)
             }
         }
 
-        return moves.joinToString("|") { it.toString() }
+        return moves.joinToString(" | ") { it.toString() }
     }
 
-    private fun log(strategy: Strategy, move:Move) {
+    private fun Pacman.isBlocked(): Boolean {
+        val prev = prevMyPacmans.asSequence().firstOrNull { it.id == this.id }
+        if (prev == null) {
+            return false
+        }
+
+        return prev.x == this.x && prev.y == this.y
+    }
+
+    private fun log(strategy: Strategy, move: Move) {
         System.err.println("$move ${strategy.name()}")
     }
 
     private fun newStrategyMove(pacman: Pacman): Pair<Strategy, Move> {
-        val pretender1 = HarvesterStrategy(currentTargets, pellets)
+        val pretender1 = HarvesterStrategy()
         val move1 = pretender1.nextMove(pacman)
         if (move1 != null) {
             return pretender1 to move1
         }
 
-        val pretender2 = IdleStrategy(hisPacmans)
+        val pretender2 = IdleStrategy()
         val move2 = pretender2.nextMove(pacman)
         if (move2 != null) {
             return pretender2 to move2
@@ -212,7 +243,7 @@ class Solver {
     }
 
     private fun removeDeads() {
-        val alivePacmans = pacmans.asSequence().map { it.id }.toSet()
+        val alivePacmans = myPacmans.asSequence().map { it.id }.toSet()
         currentTargets.entries.removeAll { (k, v) ->
             !alivePacmans.contains(k)
         }
