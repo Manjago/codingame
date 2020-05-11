@@ -107,7 +107,6 @@ interface Strategy {
     fun commit(turn: Turn): Turn = turn
 }
 
-
 class DummyStrategy : Strategy {
     override fun name() = "dummy"
     override fun isDummy() = true
@@ -115,7 +114,6 @@ class DummyStrategy : Strategy {
         return Move(pacman, pacman)
     }
 }
-
 enum class PacmanType {
     ROCK, PAPER, SCISSORS;
 
@@ -187,14 +185,14 @@ class Solver {
         }
     }
 
-    inner class KillerStrategy : Strategy {
+    inner class KillerStrategy(val limit: Int) : Strategy {
         override fun name() = "killer"
 
         override fun nextMove(pacman: Pacman): Turn? {
 
             val enemy = hisPacmans.asSequence()
                 .filter {
-                    it.dist(pacman) < 10
+                    it.dist(pacman) < limit
                 }
                 .sortedBy { it.dist(pacman) }
                 .firstOrNull()
@@ -207,26 +205,6 @@ class Solver {
                 else -> Switch(pacman, enemy.pacmanType.winner())
             }
         }
-    }
-
-    inner class IdleStrategy : Strategy {
-
-        override fun name() = "idle"
-
-        override fun isDummy() = true
-
-        override fun nextMove(pacman: Pacman): Move? {
-            val enemy = hisPacmans.asSequence()
-                .sortedBy { it.dist(pacman) }
-                .firstOrNull()
-
-            return if (enemy != null) {
-                Move(pacman, enemy)
-            } else {
-                null
-            }
-        }
-
     }
 
     fun nextMove(
@@ -251,8 +229,9 @@ class Solver {
                 currentStrategies.remove(pacman.id)
             }
 
-            if (pacman.isBlocked()) {
-                currentStrategies[pacman.id] = KillerStrategy()
+            val limitEnemy = 20
+            if (pacman.isBlocked() || pacman.nearEnemy(limitEnemy)) {
+                currentStrategies[pacman.id] = KillerStrategy(limitEnemy)
             }
 
             val strategy = currentStrategies[pacman.id]
@@ -282,20 +261,29 @@ class Solver {
         return prev.x == this.x && prev.y == this.y
     }
 
+    private fun Pacman.nearEnemy(limit: Int) : Boolean {
+        val enemy = hisPacmans.asSequence()
+            .filter { it.dist(this) < limit }
+            .sortedBy { it.dist(this) }
+            .firstOrNull()
+
+        return enemy != null
+    }
+
     private fun log(strategy: Strategy, turn: Turn) {
         if (turn is Move) {
             System.err.println("$turn ${strategy.name()} ${turn.pacman.abilityCoolDown}")
         }
     }
 
-    private fun newStrategyMove(pacman: Pacman): Pair<Strategy, Move> {
+    private fun newStrategyMove(pacman: Pacman): Pair<Strategy, Turn> {
         val pretender1 = HarvesterStrategy()
         val move1 = pretender1.nextMove(pacman)
         if (move1 != null) {
             return pretender1 to move1
         }
 
-        val pretender2 = IdleStrategy()
+        val pretender2 = KillerStrategy(Integer.MAX_VALUE)
         val move2 = pretender2.nextMove(pacman)
         if (move2 != null) {
             return pretender2 to move2
