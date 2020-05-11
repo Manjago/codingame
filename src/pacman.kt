@@ -79,6 +79,11 @@ class Solver {
 
     fun nextMove(pacmans: List<Pacman>, pellets: Set<Pellet>): String {
 
+        val alivePacmans = pacmans.asSequence().map { it.id }.toSet()
+        currentTargets.entries.removeAll { (k, v) ->
+            !alivePacmans.contains(k)
+        }
+
         val moves = mutableListOf<Move>()
 
         pacmans.forEach { pacman ->
