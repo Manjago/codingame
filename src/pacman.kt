@@ -5,10 +5,10 @@ import kotlin.math.abs
  * Grab the pellets as fast as you can!
  **/
 fun main(args: Array<String>) {
-    val solver = Solver()
     val input = Scanner(System.`in`)
     val width = input.nextInt() // size of the grid
     val height = input.nextInt() // top left corner is (x=0, y=0)
+    val solver = Solver(width, height)
     if (input.hasNextLine()) {
         input.nextLine()
     }
@@ -107,13 +107,6 @@ interface Strategy {
     fun commit(turn: Turn): Turn = turn
 }
 
-class DummyStrategy : Strategy {
-    override fun name() = "dummy"
-    override fun isDummy() = true
-    override fun nextMove(pacman: Pacman): Move? {
-        return Move(pacman, pacman)
-    }
-}
 enum class PacmanType {
     ROCK, PAPER, SCISSORS;
 
@@ -126,7 +119,7 @@ enum class PacmanType {
     }
 }
 
-class Solver {
+class Solver(private val width: Int, private val height: Int) {
 
     private val currentTargets: MutableMap<Int, Item> = mutableMapOf()
     private val currentStrategies: MutableMap<Int, Strategy> = mutableMapOf()
@@ -136,6 +129,14 @@ class Solver {
     private lateinit var hisPacmans: List<Pacman>
     private lateinit var turns: MutableList<Turn>
     private lateinit var prevTurns: MutableList<Turn>
+
+    inner class DummyStrategy : Strategy {
+        override fun name() = "dummy"
+        override fun isDummy() = true
+        override fun nextMove(pacman: Pacman): Move? {
+            return randomMove(pacman)
+        }
+    }
 
 
     inner class HarvesterStrategy : Strategy {
@@ -185,14 +186,15 @@ class Solver {
         }
     }
 
-    inner class KillerStrategy(val limit: Int) : Strategy {
+    inner class KillerStrategy(val limit: Int?) : Strategy {
         override fun name() = "killer"
 
         override fun nextMove(pacman: Pacman): Turn? {
 
+            System.err.println("ks " + hisPacmans.size)
             val enemy = hisPacmans.asSequence()
                 .filter {
-                    it.dist(pacman) < limit
+                    limit == null || it.dist(pacman) < limit
                 }
                 .sortedBy { it.dist(pacman) }
                 .firstOrNull()
@@ -230,7 +232,7 @@ class Solver {
             }
 
             val limitEnemy = 20
-            if (pacman.isBlocked() || pacman.nearEnemy(limitEnemy)) {
+            if (hisPacmans.isNotEmpty() && (pacman.isBlocked() || pacman.nearEnemy(limitEnemy))) {
                 currentStrategies[pacman.id] = KillerStrategy(limitEnemy)
             }
 
@@ -243,9 +245,7 @@ class Solver {
                 turns.add(move)
             } else {
                 val (actualStrategy, newmove) = newStrategyMove(pacman)
-                if (!actualStrategy.isDummy()) {
-                    currentStrategies[pacman.id] = actualStrategy
-                }
+                currentStrategies[pacman.id] = actualStrategy
                 actualStrategy.commit(newmove)
                 log(actualStrategy, newmove)
                 turns.add(newmove)
@@ -261,7 +261,7 @@ class Solver {
         return prev.x == this.x && prev.y == this.y
     }
 
-    private fun Pacman.nearEnemy(limit: Int) : Boolean {
+    private fun Pacman.nearEnemy(limit: Int): Boolean {
         val enemy = hisPacmans.asSequence()
             .filter { it.dist(this) < limit }
             .sortedBy { it.dist(this) }
@@ -283,7 +283,7 @@ class Solver {
             return pretender1 to move1
         }
 
-        val pretender2 = KillerStrategy(Integer.MAX_VALUE)
+        val pretender2 = KillerStrategy(null)
         val move2 = pretender2.nextMove(pacman)
         if (move2 != null) {
             return pretender2 to move2
@@ -303,4 +303,10 @@ class Solver {
         }
     }
 
+    private fun randomMove(pacman: Pacman): Move {
+        return Move(pacman, object : Item(
+            kotlin.random.Random.nextInt(width),
+            kotlin.random.Random.nextInt(height)
+        ) {})
+    }
 }
