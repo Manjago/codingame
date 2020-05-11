@@ -1,4 +1,4 @@
-//ver 2.1
+//ver 2.2.0 shorter dummy
 import java.util.*
 import kotlin.math.abs
 
@@ -182,16 +182,14 @@ class Solver(private val width: Int, private val height: Int) {
 
     inner class DummyStrategy(private var ttl: Int) : Strategy {
         var saved: Move? = null
-        override fun name() = "dummy"
+        override fun name() = "dummy$ttl"
         override fun isDummy() = ttl < 0
         override fun nextMove(pacman: Pacman): Move? {
             ttl--
-            return if (saved != null) {
-                saved
-            } else {
+            if (saved == null) {
                 saved = randomMove(pacman)
-                randomMove(pacman)
             }
+            return saved
         }
     }
 
@@ -246,7 +244,7 @@ class Solver(private val width: Int, private val height: Int) {
                 enemy.pacmanType.winner() == pacman.pacmanType ->
                     Move(pacman, enemy)
                 pacman.abilityCoolDown != 0 -> null
-                dist < 3 -> Switch(pacman, enemy.pacmanType.winner())
+                dist < KILLER_SWITCH_DIST -> Switch(pacman, enemy.pacmanType.winner())
                 else -> Move(pacman, enemy).anti()
             }
         }
@@ -389,6 +387,7 @@ class Solver(private val width: Int, private val height: Int) {
     companion object {
         private const val DIST_INSTANT_SPEED = 10
         private const val DIST_KILLING = 20
-        private const val DUMMY_TTL = 10
+        private const val DUMMY_TTL = 5
+        private const val KILLER_SWITCH_DIST = 3
     }
 }
