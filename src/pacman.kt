@@ -1,4 +1,4 @@
-//ver 2.2.0 shorter dummy
+//ver 2.3.0 possible strategy
 import java.util.*
 import kotlin.math.abs
 
@@ -170,6 +170,15 @@ class Solver(private val width: Int, private val height: Int) {
     private lateinit var hisPacmans: List<Pacman>
     private lateinit var turns: MutableList<Turn>
     private lateinit var prevTurns: MutableList<Turn>
+    private val possible = mutableSetOf<Item>()
+
+    init {
+        for (i in 0 until width) {
+            for (j in 0 until height) {
+                possible.add(Item(i, j))
+            }
+        }
+    }
 
     inner class InstantSpeedStrategy : Strategy {
         override fun name() = "ispeed"
@@ -193,6 +202,32 @@ class Solver(private val width: Int, private val height: Int) {
         }
     }
 
+    inner class PossibleStrategy() : Strategy {
+        var saved: Move? = null
+        override fun name() = "pos"
+        override fun isDummy() = false
+        override fun nextMove(pacman: Pacman): Move? {
+            if (saved == null) {
+                val item = possible.asSequence()
+                    .sortedBy { it.dist(pacman) }
+                    .firstOrNull()
+                if (item != null) {
+                    saved = Move(pacman, item)
+                }
+            }
+
+            val smartSaved = saved
+            if (smartSaved != null) {
+                if (smartSaved.item.dist(pacman) < 2) {
+                    return null
+                } else {
+                    return smartSaved
+                }
+            }
+
+            return saved
+        }
+    }
 
     inner class HarvesterStrategy : Strategy {
         override fun name() = "harv"
@@ -255,6 +290,9 @@ class Solver(private val width: Int, private val height: Int) {
         turnNum: Int
     ): String {
 
+        pacmans.forEach { possible.remove(it) }
+        hisPacmans.forEach { possible.remove(it) }
+
         this.pellets = pellets
         this.prevMyPacmans = if (turnNum != 0) this.myPacmans else listOf()
         this.myPacmans = pacmans
@@ -285,7 +323,11 @@ class Solver(private val width: Int, private val height: Int) {
                 currentStrategies[pacman.id] = InstantSpeedStrategy()
             }
 
-            if (!pacman.isBlocked() && (currentStrategies[pacman.id] is DummyStrategy)) {
+            if (!pacman.isBlocked() && (
+                        (currentStrategies[pacman.id] is DummyStrategy) ||
+                                (currentStrategies[pacman.id] is PossibleStrategy)
+                        )
+            ) {
                 val test = newTarget(pacman)
                 if (test != null) {
                     currentStrategies[pacman.id] = HarvesterStrategy()
@@ -345,8 +387,15 @@ class Solver(private val width: Int, private val height: Int) {
             return pretender2 to move2
         }
 
-        val pretender3 = DummyStrategy(DUMMY_TTL)
-        return pretender3 to pretender3.nextMove(pacman)!!
+        val pretender3 = PossibleStrategy()
+        val move3 = pretender3.nextMove(pacman)
+        if (move3 != null) {
+            return pretender3 to move3
+        }
+
+        val pretender4 = DummyStrategy(DUMMY_TTL)
+        return pretender4 to pretender4.nextMove(pacman)!!
+
     }
 
     private fun removeDeads() {
