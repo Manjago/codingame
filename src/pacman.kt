@@ -1,4 +1,4 @@
-//ver 2.3.3 sorted and first
+//ver 2.3.4 killer up
 import java.util.*
 import kotlin.math.abs
 
@@ -385,16 +385,16 @@ class Solver(private val width: Int, private val height: Int) {
             return pretender1 to move1
         }
 
-        val pretender3 = PossibleStrategy()
-        val move3 = pretender3.nextMove(pacman)
-        if (move3 != null) {
-            return pretender3 to move3
-        }
-
         val pretender2 = KillerStrategy(null)
         val move2 = pretender2.nextMove(pacman)
         if (move2 != null) {
             return pretender2 to move2
+        }
+
+        val pretender3 = PossibleStrategy()
+        val move3 = pretender3.nextMove(pacman)
+        if (move3 != null) {
+            return pretender3 to move3
         }
 
         val pretender4 = DummyStrategy(DUMMY_TTL, "h")
