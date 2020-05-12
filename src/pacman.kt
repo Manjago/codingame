@@ -1,4 +1,4 @@
-//ver 2.5.0 speed
+//ver 2.6.0 maze
 import java.util.*
 import kotlin.math.abs
 
@@ -9,13 +9,15 @@ fun main(args: Array<String>) {
     val input = Scanner(System.`in`)
     val width = input.nextInt() // size of the grid
     val height = input.nextInt() // top left corner is (x=0, y=0)
-    val solver = Solver(width, height)
     if (input.hasNextLine()) {
         input.nextLine()
     }
+    val maze : MutableList<CharArray> = mutableListOf()
     for (i in 0 until height) {
         val row = input.nextLine() // one line of the grid: space " " is floor, pound "#" is wall
+        maze.add(row.toCharArray())
     }
+    val solver = Solver(width, height, maze)
 
     var turnNum = 0
     // game loop
@@ -160,7 +162,7 @@ enum class PacmanType {
     }
 }
 
-class Solver(private val width: Int, private val height: Int) {
+class Solver(private val width: Int, private val height: Int, maze : List<CharArray>) {
 
     private val currentTargets: MutableMap<Int, Item> = mutableMapOf()
     private val currentStrategies: MutableMap<Int, Strategy> = mutableMapOf()
@@ -174,11 +176,15 @@ class Solver(private val width: Int, private val height: Int) {
     private val seen = mutableSetOf<Item>()
 
     init {
-        for (i in 0 until width) {
-            for (j in 0 until height) {
-                possible.add(Item(i, j))
+        for(j in 0 until height) {
+            val row = maze[j]
+            for (i in 0 until width) {
+                if (row[i] == ' ') {
+                    possible.add(Item(i, j))
+                }
             }
         }
+        System.err.println("possible ${possible.size}")
     }
 
     inner class InstantSpeedStrategy : Strategy {
