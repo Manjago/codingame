@@ -1,4 +1,4 @@
-//ver 2.7.0 harvester simple
+//ver 2.7.1 harvester simple logging
 import java.util.*
 import kotlin.math.abs
 
@@ -12,7 +12,7 @@ fun main(args: Array<String>) {
     if (input.hasNextLine()) {
         input.nextLine()
     }
-    val maze : MutableList<CharArray> = mutableListOf()
+    val maze: MutableList<CharArray> = mutableListOf()
     for (i in 0 until height) {
         val row = input.nextLine() // one line of the grid: space " " is floor, pound "#" is wall
         maze.add(row.toCharArray())
@@ -162,7 +162,7 @@ enum class PacmanType {
     }
 }
 
-class Solver(private val width: Int, private val height: Int, maze : List<CharArray>) {
+class Solver(private val width: Int, private val height: Int, maze: List<CharArray>) {
 
     private val currentStrategies: MutableMap<Int, Strategy> = mutableMapOf()
     private lateinit var pellets: Set<Pellet>
@@ -175,7 +175,7 @@ class Solver(private val width: Int, private val height: Int, maze : List<CharAr
     private val seen = mutableSetOf<Item>()
 
     init {
-        for(j in 0 until height) {
+        for (j in 0 until height) {
             val row = maze[j]
             for (i in 0 until width) {
                 if (row[i] == ' ') {
@@ -249,29 +249,49 @@ class Solver(private val width: Int, private val height: Int, maze : List<CharAr
     }
 
     inner class HarvesterStrategy : Strategy {
-        override fun name() = "harv"
+        override fun name() = "harv$flavour"
 
         private var target: Item? = null
+        private var flavour: String = ""
 
         override fun nextMove(pacman: Pacman): Move? {
 
             if (target == null) {
-                val next10 = pellets.asSequence()
+                target = pellets.asSequence()
                     .filter { it.value > 2 }
                     .sortedBy { it.dist(pacman) }
                     .firstOrNull()
 
-                target = next10 ?: pellets.asSequence()
-                    .sortedBy { it.dist(pacman) }
-                    .firstOrNull()
-
                 if (target == null) {
-                    target = seen.asSequence()
-                        .sortedBy { it.dist(pacman) }
-                        .firstOrNull() ?: possible.asSequence()
+                    target = pellets.asSequence()
                         .sortedBy { it.dist(pacman) }
                         .firstOrNull()
+
+                    if (target == null) {
+                        target = seen.asSequence()
+                            .sortedBy { it.dist(pacman) }
+                            .firstOrNull()
+
+                        if (target == null) {
+                            target = possible.asSequence()
+                                .sortedBy { it.dist(pacman) }
+                                .firstOrNull()
+                            if (target != null) {
+                                flavour = "p"
+                            }
+
+                        } else {
+                            flavour = "s"
+                        }
+
+                    } else {
+                        flavour = "1"
+                    }
+
+                } else {
+                    flavour = "10"
                 }
+
             }
 
             return when (val targetPretender = target) {
@@ -327,7 +347,8 @@ class Solver(private val width: Int, private val height: Int, maze : List<CharAr
         }
         pacmans.forEach {
             seen.remove(it)
-            possible.remove(it) }
+            possible.remove(it)
+        }
         hisPacmans.forEach {
             seen.remove(it)
             possible.remove(it)
