@@ -1,4 +1,4 @@
-//ver 2.4.0 seen
+//ver 2.5.0 speed
 import java.util.*
 import kotlin.math.abs
 
@@ -182,12 +182,18 @@ class Solver(private val width: Int, private val height: Int) {
     }
 
     inner class InstantSpeedStrategy : Strategy {
+        private var dummy = false
         override fun name() = "ispeed"
         override fun nextMove(pacman: Pacman): Turn? {
             return Speed(pacman)
         }
 
-        override fun isDummy() = true
+        override fun commit(turn: Turn): Turn {
+            dummy = true
+            return super.commit(turn)
+        }
+
+        override fun isDummy() = dummy
     }
 
     inner class DummyStrategy(private var ttl: Int, private val debug: String) : Strategy {
@@ -395,6 +401,17 @@ class Solver(private val width: Int, private val height: Int) {
         val move1 = pretender1.nextMove(pacman)
         if (move1 != null) {
             return pretender1 to move1
+        }
+
+        if (pacman.abilityCoolDown == 0) {
+            val enemy = hisPacmans.asSequence().sortedBy { pacman.dist(it) }.firstOrNull()
+            if (enemy == null || enemy.dist(pacman) > 5) {
+                val pretender = InstantSpeedStrategy()
+                val move = pretender.nextMove(pacman)
+                if (move != null) {
+                    return pretender to move
+                }
+            }
         }
 
         val pretender2 = KillerStrategy(null)
