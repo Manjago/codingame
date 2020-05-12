@@ -1,4 +1,4 @@
-//ver 2.9.0 agressive--
+//ver 2.8.0 advanced isBlocaked
 import java.util.*
 import kotlin.math.abs
 
@@ -488,8 +488,8 @@ class Solver(private val width: Int, private val height: Int, maze: List<CharArr
 
     companion object {
         private const val DIST_INSTANT_SPEED = 10
-        private const val DIST_KILLING = 2
+        private const val DIST_KILLING = 20
         private const val DUMMY_TTL = 5
-        private const val KILLER_SWITCH_DIST = 4
+        private const val KILLER_SWITCH_DIST = 3
     }
 }
