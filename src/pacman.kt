@@ -1,4 +1,4 @@
-//ver 2.7.1 harvester simple logging
+//ver 2.8.0 advanced isBlocaked
 import java.util.*
 import kotlin.math.abs
 
@@ -89,9 +89,11 @@ data class Pacman(
     val abilityCoolDown: Int
 ) : Item(x, y)
 
-interface Turn
+interface Turn {
+    val pacman: Pacman
+}
 
-data class Move(val pacman: Pacman, val item: Item) : Turn {
+data class Move(override val pacman: Pacman, val item: Item) : Turn {
     override fun toString(): String {
         return "MOVE ${pacman.id} ${item.x} ${item.y}"
     }
@@ -131,13 +133,13 @@ fun sign(i: Int): Int {
     }
 }
 
-data class Switch(val pacman: Pacman, val pacmanType: PacmanType) : Turn {
+data class Switch(override val pacman: Pacman, val pacmanType: PacmanType) : Turn {
     override fun toString(): String {
         return "SWITCH ${pacman.id} $pacmanType"
     }
 }
 
-data class Speed(val pacman: Pacman) : Turn {
+data class Speed(override val pacman: Pacman) : Turn {
     override fun toString(): String {
         return "SPEED ${pacman.id}"
     }
@@ -415,7 +417,10 @@ class Solver(private val width: Int, private val height: Int, maze: List<CharArr
     private fun Pacman.isBlocked(): Boolean {
         val prev = prevMyPacmans.asSequence().firstOrNull { it.id == this.id } ?: return false
 
-        return prev.x == x && prev.y == y
+        val prevTurn = prevTurn(this)
+        val isMoveTurn = prevTurn is Move
+
+        return prev.x == x && prev.y == y && isMoveTurn
     }
 
     private fun Pacman.nearEnemy(limit: Int): Boolean {
@@ -475,6 +480,10 @@ class Solver(private val width: Int, private val height: Int, maze: List<CharArr
                 kotlin.random.Random.nextInt(height)
             )
         )
+    }
+
+    private fun prevTurn(pacman: Pacman) = prevTurns.asSequence().firstOrNull{
+        it.pacman == pacman
     }
 
     companion object {
