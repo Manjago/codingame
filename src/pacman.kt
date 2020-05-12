@@ -1,4 +1,4 @@
-//ver 2.3.4 killer up
+//ver 2.4.0 seen
 import java.util.*
 import kotlin.math.abs
 
@@ -171,6 +171,7 @@ class Solver(private val width: Int, private val height: Int) {
     private lateinit var turns: MutableList<Turn>
     private lateinit var prevTurns: MutableList<Turn>
     private val possible = mutableSetOf<Item>()
+    private val seen = mutableSetOf<Item>()
 
     init {
         for (i in 0 until width) {
@@ -209,10 +210,13 @@ class Solver(private val width: Int, private val height: Int) {
         private var first = true
         override fun nextMove(pacman: Pacman): Move? {
             if (saved == null) {
-                val item = possible.asSequence()
+                val item = seen.asSequence()
+                    .sortedBy { it.dist(pacman) }
+                    .firstOrNull() ?: possible.asSequence()
                     .sortedBy { it.dist(pacman) }
                     .firstOrNull()
                 if (item != null) {
+                    System.err.println("p${seen.size}|${possible.size}")
                     saved = Move(pacman, item)
                 } else {
                     System.err.println("psize: ${possible.size}")
@@ -294,8 +298,16 @@ class Solver(private val width: Int, private val height: Int) {
         turnNum: Int
     ): String {
 
-        pacmans.forEach { possible.remove(it) }
-        hisPacmans.forEach { possible.remove(it) }
+        pellets.forEach {
+            seen.add(it)
+        }
+        pacmans.forEach {
+            seen.remove(it)
+            possible.remove(it) }
+        hisPacmans.forEach {
+            seen.remove(it)
+            possible.remove(it)
+        }
 
         this.pellets = pellets
         this.prevMyPacmans = if (turnNum != 0) this.myPacmans else listOf()
