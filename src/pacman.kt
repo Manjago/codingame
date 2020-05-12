@@ -1,4 +1,4 @@
-//ver 2.6.0 maze
+//ver 2.7.0 harvester simple
 import java.util.*
 import kotlin.math.abs
 
@@ -164,7 +164,6 @@ enum class PacmanType {
 
 class Solver(private val width: Int, private val height: Int, maze : List<CharArray>) {
 
-    private val currentTargets: MutableMap<Int, Item> = mutableMapOf()
     private val currentStrategies: MutableMap<Int, Strategy> = mutableMapOf()
     private lateinit var pellets: Set<Pellet>
     private lateinit var prevMyPacmans: List<Pacman>
@@ -237,10 +236,10 @@ class Solver(private val width: Int, private val height: Int, maze : List<CharAr
 
             val smartSaved = saved
             if (smartSaved != null) {
-                if (!first && (smartSaved.item.dist(pacman) < 2)) {
-                    return null
+                return if (!first && (smartSaved.item.dist(pacman) < 2)) {
+                    null
                 } else {
-                    return smartSaved
+                    smartSaved
                 }
             }
 
@@ -252,31 +251,44 @@ class Solver(private val width: Int, private val height: Int, maze : List<CharAr
     inner class HarvesterStrategy : Strategy {
         override fun name() = "harv"
 
+        private var target: Item? = null
+
         override fun nextMove(pacman: Pacman): Move? {
 
-            val currentTarget = currentTargets[pacman.id]
-            return if (currentTarget == null || !pellets.contains(currentTarget)) {
+            if (target == null) {
+                val next10 = pellets.asSequence()
+                    .filter { it.value > 2 }
+                    .sortedBy { it.dist(pacman) }
+                    .firstOrNull()
 
-                currentTargets.remove(pacman.id)
+                target = next10 ?: pellets.asSequence()
+                    .sortedBy { it.dist(pacman) }
+                    .firstOrNull()
 
-                val target: Pellet? = newTarget(pacman)
-                if (target != null) {
-                    currentTargets[pacman.id] = target
-                    Move(pacman, target)
-                } else {
+                if (target == null) {
+                    target = seen.asSequence()
+                        .sortedBy { it.dist(pacman) }
+                        .firstOrNull() ?: possible.asSequence()
+                        .sortedBy { it.dist(pacman) }
+                        .firstOrNull()
+                }
+            }
+
+            return when (val targetPretender = target) {
+                null -> {
                     null
                 }
-            } else {
-                Move(pacman, currentTarget)
+                else -> {
+                    when {
+                        targetPretender.dist(pacman) < 1 -> {
+                            null
+                        }
+                        else -> {
+                            Move(pacman, targetPretender)
+                        }
+                    }
+                }
             }
-        }
-
-        override fun commit(turn: Turn): Turn {
-            if (turn is Move) {
-                currentTargets.remove(turn.pacman.id)
-                currentTargets[turn.pacman.id] = turn.item
-            }
-            return turn
         }
 
     }
@@ -327,8 +339,6 @@ class Solver(private val width: Int, private val height: Int, maze : List<CharAr
         this.hisPacmans = hisPacmans
         this.prevTurns = if (turnNum != 0) this.turns else mutableListOf()
 
-        removeDeads()
-
         turns = mutableListOf()
 
         pacmans.forEach { pacman ->
@@ -356,7 +366,7 @@ class Solver(private val width: Int, private val height: Int, maze : List<CharAr
                                 (currentStrategies[pacman.id] is PossibleStrategy)
                         )
             ) {
-                val test = newTarget(pacman)
+                val test = HarvesterStrategy().nextMove(pacman)
                 if (test != null) {
                     currentStrategies[pacman.id] = HarvesterStrategy()
                 }
@@ -435,32 +445,6 @@ class Solver(private val width: Int, private val height: Int, maze : List<CharAr
         val pretender4 = DummyStrategy(DUMMY_TTL, "h")
         return pretender4 to pretender4.nextMove(pacman)!!
 
-    }
-
-    private fun removeDeads() {
-        val alivePacmans = myPacmans.asSequence().map { it.id }.toSet()
-        currentTargets.entries.removeAll { (k, v) ->
-            !alivePacmans.contains(k)
-        }
-        currentStrategies.entries.removeAll { (k, v) ->
-            !alivePacmans.contains(k)
-        }
-    }
-
-    private fun newTarget(pacman: Pacman): Pellet? {
-
-        val acquiredTargets = currentTargets.values.toSet()
-
-        val next10 = pellets.asSequence()
-            .filter { it.value > 2 }
-            .filter { !acquiredTargets.contains(it) }
-            .sortedBy { it.dist(pacman) }
-            .firstOrNull()
-
-        return next10 ?: pellets.asSequence()
-            .filter { !acquiredTargets.contains(it) }
-            .sortedBy { it.dist(pacman) }
-            .firstOrNull()
     }
 
     private fun randomMove(pacman: Pacman): Move {
