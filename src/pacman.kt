@@ -1,3 +1,4 @@
+// https://www.codingame.com/contests/spring-challenge-2020
 //ver 2.8.0 advanced isBlocaked
 import java.util.*
 import kotlin.math.abs
